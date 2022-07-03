@@ -3,4 +3,3 @@ os: linux
 files:
   - source: /spring-pet-clinic.zip	  	# dest 로 이동시킬 대상 지정, 루트(/) 면 전체파일 의미
     destination: /home/ec2-user/app/step2/zip	# 받을 위치
-    overwrite: yes	
