@@ -8,7 +8,7 @@ jdk:
  
  cache:
    directories:
-     - '$HOME/.m/repository'
+     - '$HOME/.m2/repository'
      - '$HOME/.gradle'
 
 script: "./gradlew clean package"     
