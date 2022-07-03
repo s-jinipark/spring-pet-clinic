@@ -1,0 +1,1 @@
+curl -i -X POST 127.0.0.1:8080/actuator/shutdown || echo "server stopped..."

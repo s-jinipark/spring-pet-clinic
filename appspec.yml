@@ -1,0 +1,23 @@
+version: 0.0
+os: linux
+files:
+  - source: /app.jar
+    destination: /sorc001/sample
+permissions:
+  - object: /sorc001
+    pattern: "*"
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+    type:
+      - file
+hooks:
+  ApplicationStop:
+    - location: /server-resources/scripts/stopService.sh
+      timeout: 30
+  ApplicationStart:
+    - location: /server-resources/scripts/startService.sh
+      timeout: 30
+  ValidateService:
+    - location: /server-resources/scripts/healthCheck.sh
+      timeout: 300

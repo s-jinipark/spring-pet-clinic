@@ -1,0 +1,207 @@
+image: openjdk:11-jdk
+
+stages:
+  - build
+  # 1. codeDeploy EC2 배포 : build artifact 생성 및 s3 bucket에 업로드
+  - package
+  # 1. codeDeploy EC2 배포 : codeDeploy 디플로이 생성 
+  - deploy
+  - check-deploy
+
+build-gradle:
+  stage: build
+  needs: []
+  only:
+    refs:
+      - develop
+      - stage
+      - main
+  except:
+    refs:
+      - schedule
+  # https://blog.jdriven.com/2021/11/reuse-gradle-build-cache-on-gitlab/
+  cache:
+    key:
+      files:
+        - gradle/wrapper/gradle-wrapper.properties 
+    paths:
+      - cache/caches/
+      - cache/notifications/
+      - cache/wrapper/
+  artifacts:
+    when: on_success
+    paths:
+      #build/libs/*.jar를 build artifact로 다음 JOB으로 전달
+      - ${BUILD_ARTIFACT_PATH}
+    expire_in: 7 days
+  variables:
+    #기본 *.jar path를 변수로 선언
+    BUILD_ARTIFACT_PATH: build/libs/*.jar
+    BUILD_PARAM: --build-cache --gradle-user-home cache/
+    GRADLE_TASK: build
+  script:
+    - echo "BUILD_PARAM => '${BUILD_PARAM}'"
+    - chmod +x gradlew
+    - ./gradlew ${GRADLE_TASK} ${BUILD_PARAM}
+    - ls -alR $(dirname ${BUILD_ARTIFACT_PATH})
+
+package-appspec-prd:
+  stage: package
+  only:
+    refs:
+      - main
+  except:
+    refs:
+      - schedules
+  environment: prd
+  artifacts:
+    when: on_success
+    paths:
+      - ${DEPLOYMENT_FILE_NAME}
+    expire_in: 7 days
+  variables:
+    BUILD_ARTIFACT_PATH: build/libs/app.jar
+    APPSPEC_FILE_NAME: appspec.yml
+    DEPLOYMENT_BUILD_RESOURCE_PATHS: server-resources/
+    DEPLOYMENT_FILE_NAME: ${CI_PROJECT_NAME}.zip
+    # 소문자로만 입력
+    S3_BUCKET_NAME: sj-park-prd-codedeploy
+    IS_INCLUDE_CI_PIPELINE_ID_IN_S3_PATH: 'false'
+  before_script:
+    - apt update -y && apt install zip -y
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    - unzip awscliv2.zip
+    - ./aws/install
+  script:
+    - cp `find build/libs -type f -regex '[a-zA-Z\/-]+[0-9]+.[0-9]+.[0-9]+\(SNAPSHOT\)*.jar' | head -n 1` ${BUILD_ARTIFACT_PATH}
+    # APP Spec 생성 및 업로드
+    - echo APPSPEC_FILE_NAME="${APPSPEC_FILE_NAME}" DEPLOYMENT_BUILD_RESOURCE_PATHS="${DEPLOYMENT_BUILD_RESOURCE_PATHS}"
+    - if [ "${APPSPEC_FILE_NAME}" != "appspec.yml" ]; then
+      cp ${APPSPEC_FILE_NAME} appspec.yml;
+      fi
+    # - tar -cf ${DEPLOYMENT_FILE_NAME} appspec.yml ${DEPLOYMENT_BUILD_RESOURCE_PATHS}
+    - _BUILD_ARTIFACT_FILENAME=$(basename ${BUILD_ARTIFACT_PATH})
+    - echo _BUILD_ARTIFACT_FILENAME="${_BUILD_ARTIFACT_FILENAME}"
+    - cp -rf ${BUILD_ARTIFACT_PATH} ${_BUILD_ARTIFACT_FILENAME}
+    - zip -r ${DEPLOYMENT_FILE_NAME} appspec.yml ${_BUILD_ARTIFACT_FILENAME} ${DEPLOYMENT_BUILD_RESOURCE_PATHS}
+    - ls -al ${DEPLOYMENT_FILE_NAME}
+    - if [ "${IS_INCLUDE_CI_PIPELINE_ID_IN_S3_PATH}" == "true" ]; then
+      _S3_URI=s3://${S3_BUCKET_NAME}/${CI_PIPELINE_ID}/${DEPLOYMENT_FILE_NAME};
+      else
+      _S3_URI=s3://${S3_BUCKET_NAME}/${DEPLOYMENT_FILE_NAME};
+      fi
+    - echo _S3_URI=${_S3_URI}
+    - aws --version
+    - aws s3 ls
+    - aws s3 cp ${DEPLOYMENT_FILE_NAME} ${_S3_URI}
+
+deploy-code-deploy-prd:
+  stage: deploy
+  only:
+    refs:
+      - main
+  except:
+    refs:
+      - schedules
+  environment:
+    name: prd
+    # url: http://example.com/context-path/
+  variables:
+    DEPLOYMENT_FILE_NAME: ${CI_PROJECT_NAME}.zip
+    # 소문자로만 입력
+    S3_BUCKET_NAME: sj-park-prd-codedeploy
+    IS_INCLUDE_CI_PIPELINE_ID_IN_S3_PATH: 'false'
+    # 대소문자 구분 주의
+    APPLICATION_NAME: sj-park-PRD-sample-app
+    DEPLOYMENT_GROUP_NAME: prd
+    ENABLED_DEPLOY: 'true'
+  artifacts:
+    reports:
+      dotenv: variables.env
+  before_script:
+    - apt-get update -y
+    - apt-get install -y jq
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    - unzip awscliv2.zip
+    - ./aws/install
+  script:
+    - if [ "${IS_INCLUDE_CI_PIPELINE_ID_IN_S3_PATH}" == "true" ]; then
+      _S3_KEY=${CI_PIPELINE_ID}/${DEPLOYMENT_FILE_NAME};
+      else
+      _S3_KEY=${DEPLOYMENT_FILE_NAME};
+      fi
+    - echo _S3_KEY=${_S3_KEY}
+    - if [ "${ENABLED_DEPLOY}" == "true" ]; then
+      _OUTPUT=$( aws deploy create-deployment --application-name ${APPLICATION_NAME}
+      --deployment-group-name ${DEPLOYMENT_GROUP_NAME}
+      --s3-location bucket=${S3_BUCKET_NAME},bundleType=zip,key=${_S3_KEY}
+      --file-exists-behavior OVERWRITE
+      --region ap-northeast-2 );
+      else
+      echo "ENABLED_DEPLOY"=${ENABLED_DEPLOY};
+      fi
+    - echo _OUTPUT=${_OUTPUT}
+    - DEPLOYMENT_ID=`echo ${_OUTPUT} | jq -r '.deploymentId'`;
+    - echo DEPLOYMENT_ID=${DEPLOYMENT_ID} >> variables.env;
+    - cat variables.env;
+
+
+check-code-deploy-dev:
+  stage: check-deploy
+  only:
+    refs:
+      - main
+  except:
+    refs:
+      - schedules
+  environment:
+    name: dev
+    # url: http://example.com/context-path/
+  artifacts:
+    when: on_failure
+    reports:
+      dotenv: variables.env
+  before_script:
+    - apt-get update -y
+    - apt-get install -y jq
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    - unzip awscliv2.zip
+    - ./aws/install
+  script:
+    - echo DEPLOYMENT_ID=${DEPLOYMENT_ID}
+    - echo DEPLOYMENT_ID=${DEPLOYMENT_ID} >> variables.env;
+    - cat variables.env;
+    - if [ "${DEPLOYMENT_ID}" == "" ]; then
+      echo "DEPLOYMENT_ID is not exist! finish job to check deployment.";
+      exit 1;
+      fi
+    - sleep 10;
+    - while true; do
+      _DEPLOYMENT_INFO=$(aws deploy get-deployment --deployment-id ${DEPLOYMENT_ID} --region ap-northeast-2);
+      _DEPLOYMENT_STATUS=$(echo ${_DEPLOYMENT_INFO} | jq -r '.deploymentInfo.status');
+      _DEPLOYMENT_OVERVIEW=$(echo ${_DEPLOYMENT_INFO} | jq -r '.deploymentInfo.deploymentOverview');
+      if [ ${_DEPLOYMENT_STATUS} == 'InProgress' ]; then
+      echo "Deployment still in progress";
+      echo ${_DEPLOYMENT_OVERVIEW};
+      sleep 5;
+      elif [ ${_DEPLOYMENT_STATUS} == 'Succeeded' ]; then
+      echo "Deployment succeeded";
+      echo ${_DEPLOYMENT_OVERVIEW};
+      break;
+      elif [ ${_DEPLOYMENT_STATUS} == 'Ready' ]; then
+      echo "Green Instances are ready";
+      echo ${_DEPLOYMENT_OVERVIEW};
+      break;
+      elif [ ${_DEPLOYMENT_STATUS} == 'Failed' ]; then
+      echo "ERROR => Deployment Failed."
+      echo $(echo ${_DEPLOYMENT_INFO} | jq -r '.deploymentInfo.errorInformation.message');
+      exit 1;
+      else
+      echo "ERROR => Deployment Failed.";
+      echo "Unknown error";
+      echo "Deployment status="${_DEPLOYMENT_STATUS};
+      echo ${_DEPLOYMENT_OVERVIEW};
+      echo $(echo ${_DEPLOYMENT_INFO} | jq -r '.deploymentInfo.errorInformation.message');
+      exit 1;
+      fi
+      done

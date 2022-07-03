@@ -1,0 +1,54 @@
+<configuration>
+	<!-- 공통 로그 -->
+	<!-- 로그파일 디렉토리 -->
+	<springProperty scope="context" name="logDir" source="spring.logback.log-dir" defaultValue="./logs"/>
+	<!-- 로그파일 이름 -->
+	<springProperty scope="context" name="logFile" source="spring.logback.log-file" defaultValue="application.log"/>
+	<!-- 로그 메시지 패턴 -->
+	<springProperty scope="context" name="logMsgPattern" source="spring.logback.log-msg-pattern"
+					defaultValue="%-5level %d{HH:mm:ss.SSS} [%thread] [%class{1.}] [%F:%L] %method - %msg%n"/>
+	<!-- 기본 롤링 : 파일 사이즈 -->
+	<springProperty scope="context" name="rollingFileSize" source="spring.logback.rolling-file-size" defaultValue="10MB"/>
+	<!-- 기본 롤링 : 보관일수 -->
+	<springProperty scope="context" name="rollingHistory" source="spring.logback.rolling-history" defaultValue="7"/>
+
+	<!-- Console Appender -->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>${logMsgPattern}</pattern>
+		</encoder>
+	</appender>
+
+	<!-- Rolling File Appender -->
+	<appender name="rollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<!-- 파일 경로 -->
+		<file>${logDir}/${logFile}</file>
+		<append>true</append>
+		<!-- 출력패턴 -->
+		<encoder>
+			<pattern>${logMsgPattern}</pattern>
+		</encoder>
+		<!-- Rolling 정책 -->
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- .gz,.zip 등을 넣으면 자동으로 일자별 로그파일 압축 : 압축은 하지 않는다. -->
+			<fileNamePattern>${logDir}/${logFile}_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<!-- 파일당 최고 용량 -->
+				<maxFileSize>${rollingFileSize}</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<!-- 일자별 로그파일 최대 보관주기(일단위) 만약 해당 설정일 이상된 파일은 자동으로 제거-->
+			<maxHistory>${rollingHistory}</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<root level="INFO">
+		<appender-ref ref="console"/>
+		<appender-ref ref="rollingFile"/>
+	</root>
+
+</configuration>
+
+
+
+
+
