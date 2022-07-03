@@ -24,6 +24,22 @@ cache:
 # 프로젝트 내에 권한이 추가된 gradlew를 활용하여 clean, build를 진행한다.
 script: "./gradlew clean build"
 
+before_deploy:
+  - zip -r spring-pet-clinic * 
+  - mkdir -p deploy
+  - mv spring-pet-clinic.zip deploy/spring-pet-clinic.zip
+
+deploy:
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY      # travis repo setting 설정 값
+    secret_access_key: $AWS_SECRET_KEY  # travis repo setting 설정 값
+    bucket : cdsusr67       # S3 버킷
+    region: eu-west-1       
+    skip_cleanup: true
+    acl: private            # zip 파일 권한
+    local_dir: deploy       # before_deploy 에서 생성한 dir
+    wait-until-deployed: true
+    
 # CI 실행 완료 시 작성한 이메일로 알람
 notifications:
   email:
