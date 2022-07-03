@@ -1,0 +1,20 @@
+language: java
+jdk:
+  - openjdk11
+  
+ branches:
+   - main
+ 
+ cache:
+   directories:
+     - '$HOME/.m/repository'
+     - '$HOME/.mvn'
+
+script: "./mvnw clean package"     
+
+
+notifications:
+  email:
+    recipients:
+      jinipark@naver.com
+      
