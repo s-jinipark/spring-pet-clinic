@@ -55,7 +55,8 @@ deploy:
     on:                     # 해당 라인 추가 ***
       all_branches: true    # master 브랜치 말고도 다른 브랜치에도 권한을 허용한다.
 
-      
+    # 태그 주의
+    
 # CI 실행 완료 시 작성한 이메일로 알람
 notifications:
   email:
