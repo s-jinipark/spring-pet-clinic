@@ -1,23 +1,7 @@
-version: 0.0
+version: 0.0		# CodeDeploy 버전, 0.0 외엔 오류
 os: linux
 files:
-  - source: /app.jar
-    destination: /sorc001/sample
-permissions:
-  - object: /sorc001
-    pattern: "*"
-    owner: ec2-user
-    group: ec2-user
-    mode: 755
-    type:
-      - file
-hooks:
-  ApplicationStop:
-    - location: /server-resources/scripts/stopService.sh
-      timeout: 30
-  ApplicationStart:
-    - location: /server-resources/scripts/startService.sh
-      timeout: 30
-  ValidateService:
-    - location: /server-resources/scripts/healthCheck.sh
-      timeout: 300
+  - source: /	  	# dest 로 이동시킬 대상 지정, 루트(/) 면 전체파일 의미
+    destination: /home/ec2-user/app/step2/zip/	# 받을 위치
+	overwrite: yes	
+	
