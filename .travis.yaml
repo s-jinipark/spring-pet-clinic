@@ -12,7 +12,7 @@ jdk:
 
 script: "./mvnw clean package"     
 
-#1 
+#1 2
 notifications:
   email:
     recipients:
