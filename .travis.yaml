@@ -3,7 +3,8 @@ jdk:
   - openjdk11
   
  branches:
-   - main
+   only:
+     - main
  
  cache:
    directories:
