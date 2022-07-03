@@ -13,7 +13,7 @@ jdk:
 
 script: "./gradlew clean package"     
 
-#1 2
+#1 2 7
 notifications:
   email:
     recipients:
