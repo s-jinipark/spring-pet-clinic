@@ -9,9 +9,9 @@ jdk:
  cache:
    directories:
      - '$HOME/.m/repository'
-     - '$HOME/.mvn'
+     - '$HOME/.gradle'
 
-script: "./mvnw clean package"     
+script: "./gradlew clean package"     
 
 #1 2
 notifications:
