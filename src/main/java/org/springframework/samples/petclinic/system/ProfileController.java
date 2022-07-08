@@ -27,6 +27,8 @@ import java.util.List;
 
 @RestController
 public class ProfileController {
+	
+	@Resource
     private final Environment env;
 
     @GetMapping("/profile")
