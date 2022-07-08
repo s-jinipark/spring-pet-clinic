@@ -37,3 +37,5 @@ echo "> $JAR_NAME 실행"
 #nohup java -jar $JAR_NAME > $REPOSITORY/nohup.out 2>&1 &
 #nohup java -jar $REPOSITORY/spring-petclinic-2.6.0.jar  > $REPOSITORY/nohup.out 2>&1 &
 nohup java -jar $REPOSITORY/spring-petclinic-2.6.0.jar 
+
+#[stderr]ERROR in ch.qos.logback.core.rolling.RollingFileAppender[rollingFile] - Failed to create parent directories for [/./logs/application.log]
