@@ -16,21 +16,19 @@
 
 package org.springframework.samples.petclinic.system;
 
-
-import org.springframework.core.env.Environment;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class ProfileController {
-	
+class ProfileController {
+
 	@Autowired
-    private final Environment env;
+    private Environment env;
 
     @GetMapping("/profile")
     public String profile() {
@@ -43,4 +41,5 @@ public class ProfileController {
                 .findAny()
                 .orElse(defaultProfile);
     }
+
 }
