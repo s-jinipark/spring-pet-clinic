@@ -14,5 +14,5 @@ permissions:
 hooks:
   ApplicationStart:
     - location: deploy.sh
-      timeout: 120   # 60초 오류 나서
+      timeout: 600   # 60초 오류 나서
       runas: ec2-user
